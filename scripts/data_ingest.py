@@ -44,9 +44,8 @@ def generate_sample_outbreak_data(output_path: str, num_samples: int = 1000):
     outbreak_prob = np.where((months >= 6) & (months <= 9), base_prob + 0.15, base_prob)
     outbreaks = np.random.random(num_samples) < outbreak_prob
     
-    # Disease types
-    diseases = np.random.choice(config.DISEASE_TYPES, num_samples, 
-                                p=[0.3, 0.2, 0.15, 0.25, 0.1])
+    # Disease types - uniform distribution across all disease types
+    diseases = np.random.choice(config.DISEASE_TYPES, num_samples)
     
     # Create DataFrame
     df = pd.DataFrame({
