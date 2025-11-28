@@ -1,0 +1,18 @@
+services:
+  - type: web
+    name: disease-outbreak-predictor
+    env: python
+    region: oregon
+    plan: free
+    branch: main
+    buildCommand: pip install -r requirements.txt && python scripts/data_ingest.py --samples 1000 && python scripts/train_models.py
+    startCommand: gunicorn app:app
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.10.0
+      - key: DEBUG
+        value: false
+      - key: HOST
+        value: 0.0.0.0
+      - key: PORT
+        value: 10000

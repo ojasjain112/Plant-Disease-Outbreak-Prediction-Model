@@ -1,0 +1,6 @@
+# Keep data directory but ignore large CSV files
+# Training data will be generated during build
+*.csv
+
+# Keep a placeholder
+!.gitkeep

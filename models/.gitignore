@@ -1,0 +1,7 @@
+# Keep models directory but ignore large files
+# Models will be generated during build
+*.pkl
+*.json
+
+# Keep a placeholder
+!.gitkeep

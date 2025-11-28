@@ -1,0 +1,276 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ app_name }}</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+</head>
+
+<body>
+    <div class="page-background"></div>
+
+    <div class="container">
+        <header class="hero-header">
+            <div class="header-content">
+                <div class="header-icon">
+                    <i class="fas fa-seedling"></i>
+                </div>
+                <h1>{{ app_name }}</h1>
+                <p class="description">
+                    <i class="fas fa-cloud-sun"></i> {{ app_description }}
+                </p>
+                <div class="header-stats">
+                    <div class="stat-item">
+                        <i class="fas fa-globe-americas"></i>
+                        <span>Global Coverage</span>
+                    </div>
+                    <div class="stat-item">
+                        <i class="fas fa-brain"></i>
+                        <span>AI-Powered</span>
+                    </div>
+                    <div class="stat-item">
+                        <i class="fas fa-calendar-week"></i>
+                        <span>7-Day Forecast</span>
+                    </div>
+                </div>
+            </div>
+        </header>
+
+        <main class="dashboard">
+            <div class="dashboard-grid">
+                <section class="card map-section">
+                    <div class="card-header">
+                        <i class="fas fa-map-marked-alt"></i>
+                        <h2>Select Location</h2>
+                    </div>
+                    <p class="instruction">
+                        <i class="fas fa-info-circle"></i>
+                        Click on the map to select a location for outbreak risk prediction
+                    </p>
+                    <div id="map" role="application" aria-label="Interactive map for location selection"></div>
+                </section>
+
+                <section class="card input-section">
+                    <div class="card-header">
+                        <i class="fas fa-sliders-h"></i>
+                        <h2>Prediction Settings</h2>
+                    </div>
+                    <form id="prediction-form">
+                        <div class="form-group">
+                            <label for="latitude">
+                                <i class="fas fa-location-arrow"></i> Latitude:
+                            </label>
+                            <input type="number" id="latitude" name="latitude" step="0.0001"
+                                placeholder="Click map or enter latitude" required aria-label="Latitude coordinate">
+                        </div>
+
+                        <div class="form-group">
+                            <label for="longitude">
+                                <i class="fas fa-location-arrow"></i> Longitude:
+                            </label>
+                            <input type="number" id="longitude" name="longitude" step="0.0001"
+                                placeholder="Click map or enter longitude" required aria-label="Longitude coordinate">
+                        </div>
+
+                        <div class="form-group">
+                            <label>
+                                <i class="fas fa-calendar-check"></i> Select Forecast Days (1-7):
+                            </label>
+                            <div class="checkbox-grid" role="group" aria-label="Select forecast days">
+                                {% for day in lead_days %}
+                                <label class="checkbox-card">
+                                    <input type="checkbox" name="lead_days" value="{{ day }}" checked>
+                                    <span class="checkbox-content">
+                                        <i class="fas fa-sun"></i>
+                                        <strong>Day {{ day }}</strong>
+                                    </span>
+                                </label>
+                                {% endfor %}
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="disease">
+                                <i class="fas fa-leaf"></i> Plant Disease Type (Optional):
+                            </label>
+                            <select id="disease" name="disease" aria-label="Select plant disease type">
+                                <option value="">Select plant disease...</option>
+                                {% for disease in disease_types %}
+                                <option value="{{ disease }}">{{ disease|replace('_', ' ')|title }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+
+                        <button type="submit" class="btn-primary" aria-label="Submit prediction request">
+                            <i class="fas fa-chart-line"></i>
+                            Predict Outbreak Risk
+                        </button>
+                    </form>
+                </section>
+            </div>
+
+            <section id="loading-section" class="loading-section hidden">
+                <div class="loading-card">
+                    <div class="spinner-modern">
+                        <div class="spinner-ring"></div>
+                        <div class="spinner-ring"></div>
+                        <div class="spinner-ring"></div>
+                        <i class="fas fa-brain spinner-icon"></i>
+                    </div>
+                    <h3>Analyzing Data...</h3>
+                    <p>Fetching weather forecasts and computing risk predictions</p>
+                    <div class="loading-steps">
+                        <div class="step active"><i class="fas fa-cloud"></i> Fetching Weather</div>
+                        <div class="step"><i class="fas fa-cogs"></i> Engineering Features</div>
+                        <div class="step"><i class="fas fa-brain"></i> Running Models</div>
+                        <div class="step"><i class="fas fa-check-circle"></i> Generating Results</div>
+                    </div>
+                </div>
+            </section>
+
+            <section id="results-section" class="results-section hidden">
+                <div class="results-header">
+                    <h2><i class="fas fa-chart-bar"></i> Outbreak Risk Predictions</h2>
+                    <button id="reset-btn" class="btn-secondary">
+                        <i class="fas fa-redo"></i> New Prediction
+                    </button>
+                </div>
+
+                <div class="card location-info">
+                    <div class="info-header">
+                        <i class="fas fa-map-pin"></i>
+                        <h3>Location Information</h3>
+                    </div>
+                    <div class="info-content">
+                        <div class="info-item">
+                            <i class="fas fa-map-marker-alt"></i>
+                            <div>
+                                <strong>Coordinates</strong>
+                                <span id="result-coords"></span>
+                            </div>
+                        </div>
+                        <div class="info-item">
+                            <i class="fas fa-leaf"></i>
+                            <div>
+                                <strong>Plant Disease Type</strong>
+                                <span id="result-disease"></span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card chart-container">
+                    <div class="card-header">
+                        <i class="fas fa-chart-line"></i>
+                        <h3>Risk Probability Chart</h3>
+                    </div>
+                    <canvas id="risk-chart" role="img" aria-label="Risk probability chart"></canvas>
+                </div>
+
+                <div class="card predictions-table">
+                    <div class="card-header">
+                        <i class="fas fa-table"></i>
+                        <h3>Daily Risk Assessment</h3>
+                    </div>
+                    <div class="table-responsive">
+                        <table id="risk-table" role="table">
+                            <thead>
+                                <tr>
+                                    <th><i class="fas fa-calendar-day"></i> Day</th>
+                                    <th><i class="fas fa-percentage"></i> Probability</th>
+                                    <th><i class="fas fa-exclamation-triangle"></i> Risk Level</th>
+                                    <th><i class="fas fa-list"></i> Top Features</th>
+                                </tr>
+                            </thead>
+                            <tbody id="risk-table-body">
+                                <!-- Populated dynamically -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <div class="card weather-summary">
+                    <div class="card-header">
+                        <i class="fas fa-cloud-sun-rain"></i>
+                        <h3>Weather Trends</h3>
+                    </div>
+                    <div id="weather-summary-content" class="weather-grid">
+                        <!-- Populated dynamically -->
+                    </div>
+                </div>
+
+                <div class="card parameters-details">
+                    <div class="card-header">
+                        <div>
+                            <i class="fas fa-database"></i>
+                            <h3 style="display: inline; margin-left: 8px;">Weather Parameters (53 Variables)</h3>
+                        </div>
+                        <button id="toggle-parameters" class="btn-toggle">
+                            <i class="fas fa-chevron-down"></i>
+                            <span>Show Details</span>
+                        </button>
+                    </div>
+                    <div id="parameters-content" class="parameters-grid hidden">
+                        <!-- Populated dynamically -->
+                    </div>
+                </div>
+
+                <div class="card features-details">
+                    <div class="card-header">
+                        <div>
+                            <i class="fas fa-cogs"></i>
+                            <h3 style="display: inline; margin-left: 8px;">Engineered Features</h3>
+                        </div>
+                        <button id="toggle-features" class="btn-toggle">
+                            <i class="fas fa-chevron-down"></i>
+                            <span>Show Details</span>
+                        </button>
+                    </div>
+                    <div id="features-content" class="features-grid hidden">
+                        <!-- Populated dynamically -->
+                    </div>
+                </div>
+            </section>
+
+            <section id="error-section" class="error-section hidden">
+                <div class="error-card">
+                    <div class="error-icon">
+                        <i class="fas fa-exclamation-circle"></i>
+                    </div>
+                    <h3>Oops! Something went wrong</h3>
+                    <p id="error-message-text"></p>
+                    <button id="error-reset-btn" class="btn-secondary">
+                        <i class="fas fa-redo"></i> Try Again
+                    </button>
+                </div>
+            </section>
+        </main>
+
+        <footer>
+            <div class="footer-content">
+                <p>
+                    <i class="fas fa-copyright"></i> 2025 {{ app_name }}
+                </p>
+                <p>
+                    <i class="fas fa-cloud"></i> Weather data provided by
+                    <a href="https://open-meteo.com/" target="_blank" rel="noopener">Open-Meteo</a>
+                </p>
+                <p>
+                    <i class="fas fa-heart"></i> Built for agriculture and plant disease prevention
+                </p>
+            </div>
+        </footer>
+    </div>
+
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <script src="{{ url_for('static', filename='js/map.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/chart.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+</body>
+
+</html>
